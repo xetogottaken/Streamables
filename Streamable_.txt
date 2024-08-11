@@ -1,0 +1,220 @@
+
+repeat task.wait() until game:IsLoaded()
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Hosvile/Refinement/main/Fluxus%20Visibility", true))()
+
+
+--> Services | Variables <--
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+
+--> LocalPlayer | Variables <--
+local player = Players.LocalPlayer
+local playerCharacter = player.Character
+local playerCamera = Workspace.CurrentCamera
+
+--> Targeted Player | Variables <--
+local TargetedPlayer = nil
+local TargetedPlayerCharacter = nil
+local TargetedPlayerAimPart = nil
+
+--> Silent Aim | Global Variables <--
+getgenv().Silent = {
+    Settings = {
+        Toggled = true,
+        AimPart = "UpperTorso", -- HumanoidRootPart, UpperTorso, LowerTorso, Head <-- Main Parts
+        HitChance = 100,
+        Prediction = {
+            Toggled = true,
+            Horizontal = 0.15038, -- x and z
+            Vertical = 0.15038, -- y
+        },
+        Circle = {
+            Visible = true,
+            Color = Color3.fromRGB(255, 255, 255),
+            Transparency = 0,
+            Thickness = 0,
+            NumSides = 1000,
+            Radius = 10,
+            Filled = false,
+        },
+    },
+}
+
+local Hit_Success = false -- don't touch this.
+
+--> ScreenGui | Variables <--
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = CoreGui
+ScreenGui.Name = "ScreenGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = false
+ScreenGui.DisplayOrder = 9e9
+ScreenGui.Enabled = true
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.AutoLocalize = true
+ScreenGui.Archivable = true
+
+--> FOV Circle | Variables <--
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = Silent.Settings.Circle.Visible
+FOVCircle.Color = Silent.Settings.Circle.Color
+FOVCircle.Transparency = Silent.Settings.Circle.Transparency
+FOVCircle.Thickness = Silent.Settings.Circle.Thickness
+FOVCircle.NumSides = Silent.Settings.Circle.NumSides
+FOVCircle.Radius = playerCamera.ViewportSize.X / Silent.Settings.Circle.Radius
+FOVCircle.Filled = Silent.Settings.Circle.Filled
+FOVCircle.Position = Vector2.new(playerCamera.ViewportSize.X / 2, playerCamera.ViewportSize.Y / 2)
+
+--> Function To Handle LocalPlayer Respawns <--
+player.CharacterAdded:Connect(function(NewCharacter)
+    playerCharacter = NewCharacter
+end)
+
+--> Function To Get The Closest Player <--
+local function GetClosestPlayer()
+    local ClosestPlayer = nil
+    local ShortestDistance = math.huge
+
+    for _, Player in ipairs(Players:GetPlayers()) do
+        if Player ~= player and Player.Character then
+            for _, PlayerPart in ipairs(Player.Character:GetChildren()) do
+                if PlayerPart:IsA("BasePart") and PlayerPart.Transparency ~= 1 then
+                    local PlayerScreenPosition = playerCamera:WorldToViewportPoint(PlayerPart.Position)
+                    local PlayerDirection = (PlayerPart.Position - playerCamera.CFrame.Position).unit
+                    local DotProduct = playerCamera.CFrame.LookVector:Dot(PlayerDirection)
+
+                    if DotProduct > 0 then
+                        local MagnitudeDistance = (Vector2.new(PlayerScreenPosition.X, PlayerScreenPosition.Y) - FOVCircle.Position).Magnitude
+
+                        if MagnitudeDistance < ShortestDistance and MagnitudeDistance <= FOVCircle.Radius then
+                            ClosestPlayer = Player
+                            ShortestDistance = MagnitudeDistance
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return ClosestPlayer
+end
+
+--> Function To Handle Targeted Player Variables <-- 
+RunService.RenderStepped:Connect(function(deltaTime)
+    TargetedPlayer = GetClosestPlayer()
+    if TargetedPlayer and TargetedPlayer.Character and TargetedPlayer.Character:WaitForChild(Silent.Settings.AimPart) then
+        TargetedPlayerCharacter = TargetedPlayer.Character
+        TargetedPlayerAimPart = TargetedPlayerCharacter:WaitForChild(Silent.Settings.AimPart)
+    end
+end)
+
+--> Adonis Bypasser <--
+for _, collectedItem in pairs(getgc(true)) do
+    if pcall(function() return rawget(collectedItem, "indexInstance") end) then
+        local indexInstanceProperty = rawget(collectedItem, "indexInstance")
+        if type(indexInstanceProperty) == "table" and indexInstanceProperty[1] == "kick" then
+            collectedItem.kickHandler = {
+                "kick",
+                function() 
+                    wait(100e100)
+                    return coroutine.yield() 
+                end
+            }
+        end
+    end
+end
+
+--> RawMetaTables | Variables <--
+local RawMetaTable = getrawmetatable(game)
+local OldRawMetaTable = RawMetaTable.__namecall
+
+setreadonly(RawMetaTable, false)
+
+--> Seed The Random Number Generator <--
+math.randomseed(os.time())
+
+--> Silent Aim Function <--
+RawMetaTable.__namecall = newcclosure(function(...)
+    local RemoteArguments = {...}
+
+    if Silent.Settings.Toggled and getnamecallmethod() == "FireServer" and TargetedPlayer and TargetedPlayerCharacter and TargetedPlayerAimPart then
+        local VelocityPrediction = Vector3.new(TargetedPlayerAimPart.Velocity.X * Silent.Settings.Prediction.Horizontal, TargetedPlayerAimPart.Velocity.Y * Silent.Settings.Prediction.Vertical, TargetedPlayerAimPart.Velocity.Z * Silent.Settings.Prediction.Horizontal)
+        Hit_Success = math.random(100) <= Silent.Settings.HitChance
+
+        if (RemoteArguments[2] == "UpdateMousePos" and type(RemoteArguments[3]) ~= "table") or (RemoteArguments[2] == "MousePos" and type(RemoteArguments[3]) ~= "table") or (RemoteArguments[2] == "MOUSE" and type(RemoteArguments[3]) ~= "table") then
+
+            if Hit_Success then
+                if Silent.Settings.Prediction.Toggled then
+                    RemoteArguments[3] = TargetedPlayerAimPart.Position + VelocityPrediction
+                elseif not Silent.Settings.Prediction.Toggled then
+                    RemoteArguments[3] = TargetedPlayerAimPart.Position
+                end
+            end
+
+        elseif (RemoteArguments[2] == "UpdateMousePos" and type(RemoteArguments[3]) == "table" and RemoteArguments[3]["MousePos"] and RemoteArguments[3]["Camera"] and not RemoteArguments[3][1] and not RemoteArguments[3][2]) then
+
+            if Hit_Success then
+                if Silent.Settings.Prediction.Toggled then
+                    RemoteArguments[3] = {
+                        ["MousePos"] = TargetedPlayerAimPart.Position + VelocityPrediction,
+                        ["Camera"] = TargetedPlayerAimPart.Position + VelocityPrediction
+                    }
+                elseif not Silent.Settings.Prediction.Toggled then
+                    RemoteArguments[3] = {
+                        ["MousePos"] = TargetedPlayerAimPart.Position,
+                        ["Camera"] = TargetedPlayerAimPart.Position
+                    }
+                end
+            end
+
+        elseif (RemoteArguments[2] == "UpdateMousePos" and type(RemoteArguments[3]) == "table" and not RemoteArguments[3]["MousePos"] and not RemoteArguments[3]["Camera"] and RemoteArguments[3][1] and RemoteArguments[3][2]) then
+
+            if Hit_Success then
+                if Silent.Settings.Prediction.Toggled then
+                    RemoteArguments[3] = {
+                        [1] = TargetedPlayerAimPart.Position + VelocityPrediction,
+                        [2] = TargetedPlayerAimPart.Position + VelocityPrediction
+                    }
+                elseif not Silent.Settings.Prediction.Toggled then
+                    RemoteArguments[3] = {
+                        [1] = TargetedPlayerAimPart.Position,
+                        [2] = TargetedPlayerAimPart.Position
+                    }
+                end
+            end
+
+        end
+
+        return OldRawMetaTable(unpack(RemoteArguments))
+    end
+    return OldRawMetaTable(...)
+end)
+
+-- Execute the FPS Booster Script
+_G.Settings = {
+    Players = {
+        ["Ignore Me"] = true,
+        ["Ignore Others"] = true
+    },
+    Meshes = {
+        Destroy = false,
+        LowDetail = true
+    },
+    Images = {
+        Invisible = true,
+        LowDetail = false,
+        Destroy = false,
+    },
+    ["No Particles"] = true,
+    ["No Camera Effects"] = true,
+    ["No Explosions"] = true,
+    ["No Clothes"] = true,
+    ["Low Water Graphics"] = true,
+    ["No Shadows"] = true,
+    ["Low Rendering"] = true,
+    ["Low Quality Parts"] = true
+}
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/CasperFlyModz/discord.gg-rips/main/FPSBooster.lua"))()
