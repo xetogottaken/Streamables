@@ -32,12 +32,12 @@ getgenv().Silent = {
             Vertical = 0.15038, -- y
         },
         Circle = {
-            Visible = true,
+            Visible = false,
             Color = Color3.fromRGB(255, 255, 255),
-            Transparency = 0,
-            Thickness = 0,
+            Transparency = 1,
+            Thickness = 1,
             NumSides = 1000,
-            Radius = 10,
+            Radius = 20,
             Filled = false,
         },
     },
