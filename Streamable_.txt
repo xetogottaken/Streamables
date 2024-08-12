@@ -37,7 +37,7 @@ getgenv().Silent = {
             Transparency = 1,
             Thickness = 1,
             NumSides = 1000,
-            Radius = 20,
+            Radius = 1,
             Filled = false,
         },
     },
